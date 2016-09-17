@@ -17,16 +17,32 @@ Product{
     // qbs instead of makefiles which helps catching errors...
     // but will build on each application rebuild instead of in
     // a common directory
-    readonly property bool qbsBuild: false
+    readonly property bool qbsBuild: project.makeOF !== undefined ? !project.makeOF : false
+    readonly property bool usePoco: project.usePoco !== undefined ? project.usePoco : true
 
     Properties{
         condition: qbsBuild
         type: "staticlibrary"
-        destinationDirectory: Helpers.normalize(FileInfo.joinPaths(path, "../../lib", platform))
+        destinationDirectory: Helpers.normalize(FileInfo.joinPaths(path, "../../lib", project.platform))
     }
 
     Depends {
         name: "of"
+    }
+
+    cpp.includePaths: of.coreIncludePaths
+    cpp.defines: of.coreDefines
+    cpp.cxxStandardLibrary: of.coreCxxStandardLibrary
+    cpp.cxxLanguageVersion: of.coreCxxLanguageVersion
+    cpp.frameworks: of.coreFrameworks
+    cpp.cxxFlags: of.coreCxxFlags
+    cpp.cFlags: of.coreCFlags
+    cpp.warningLevel: of.coreWarningLevel
+    cpp.architecture: qbs.architecture
+
+    Properties{
+        condition: qbs.targetOS.contains("android")
+        cpp.sysroot: of.coreSysroot
     }
 
     property stringList FILES_EXCLUDE: {
@@ -89,8 +105,13 @@ Product{
              filePath: Helpers.normalize(product.libDir + "/libopenFrameworksDebug.a")
              fileTags: "staticlibrary"
         }
-        prepare: {           
-            var qbsCmd = new Command(product.make, ['Debug','-j4']);
+        prepare: {
+            var parameters = ['-j4', 'Debug'];
+            if(!product.usePoco){
+                parameters.push('OF_USE_POCO=0');
+            }
+
+            var qbsCmd = new Command(product.make, parameters);
             qbsCmd.description = "building openFrameworks library";
             qbsCmd.workingDirectory = product.projectDir;
             qbsCmd.silent = false;
@@ -107,7 +128,12 @@ Product{
              fileTags: "staticlibrary"
         }
         prepare: {
-            var qbsCmd = new Command(product.make, ['Release','-j4']);
+            var parameters = ['-j4', 'Release'];
+            if(!product.usePoco){
+                parameters.push('OF_USE_POCO=0');
+            }
+
+            var qbsCmd = new Command(product.make, parameters);
             qbsCmd.description = "building openFrameworks library";
             qbsCmd.workingDirectory = product.projectDir;
             qbsCmd.silent = false;
